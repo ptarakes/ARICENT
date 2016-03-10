@@ -1,0 +1,72 @@
+package com.nvd3;
+
+import java.net.UnknownHostException;
+import java.util.ArrayList;
+import java.util.List;
+
+import com.mongodb.DB;
+import com.mongodb.DBCollection;
+import com.mongodb.MapReduceOutput;
+import com.mongodb.Mongo;
+import com.mongodb.MapReduceCommand.OutputType;
+
+@SuppressWarnings("rawtypes")
+public class MapReduce {
+	public List mapReduce() throws UnknownHostException{
+		List data = new ArrayList();
+		Mongo mongo = new Mongo("localhost", 27017);/*Connecting to local MongoDB server*/
+		DB db = mongo.getDB("aricent");/*Connecting to Database 'bcc'*/
+		DBCollection collection = db.getCollection("trip_trans_dup");/*select Collection(table) 'trip_trans' of 'workshop'*/
+		String mapFun = null, reduceFun = null;
+		/*Map Function*/
+		mapFun = "function(){"
+				+"var timestamp = this.timestamp*1000;"
+				+"var min_temp, max_temp, temp;"
+				+"temp = this.temperature;"
+				+"max_temp = this.maximum_temperature;"
+				+"min_temp = this.minimum_temperature;"
+				+"if(this.material == 'Fish' && (temp < min_temp || temp > max_temp))"
+				+"{"
+				+"emit(this.trip_id, this);"
+				+"}"
+				+"}";
+		/*Reduce Function*/
+		reduceFun = "function(k, v){"
+				+"var json1 = {};"
+				+"var counter = 0;"
+				+"var previousTimestamp;"
+				+"var getWeek = function(d){"
+				+"d.setHours(0,0,0);"
+				+"d.setDate(d.getDate()+4-(d.getDay()||7));"
+				+"return Math.ceil((((d-new Date(d.getFullYear(),0,1))/8.64e7)+1)/7);"
+				+"};"
+				+"for(var i=0; i < v.length; i++){"
+				+"if (counter == 0) {"
+				+"previousTimestamp = v[i].timestamp;"
+				+"counter++;"
+				+"continue;"
+				+"}"
+				+"if (counter = 3){"
+				+"json1.customer = v[i].customer;"
+				+"json1.weekNo = getWeek(new Date(v[i].timestamp*1000));"
+				+"break;"
+				+"}"
+				+"if ((v[i].timestamp - previousTimestamp)/60 < 16) {"
+				+"counter++;"
+				+"previousTimestamp = v[i].timestamp;"
+				+"} else {"
+				+"counter = 0;"
+				+"previousTimestamp = v[i].timestamp;"
+				+"}"
+				+"}"
+				+"if (counter == 3){"
+				+"return json1;"
+				+"}"
+				+"return null;"
+				+"}";
+		/*Execute Map-Reduce Functions */
+		MapReduceOutput mapReduceOutput = collection.mapReduce(mapFun, reduceFun, null, OutputType.INLINE, null);
+		data = (List) mapReduceOutput.getCommandResult().get("results");/*get map reduce output main result and assign to data */
+		return data;
+	}
+}
