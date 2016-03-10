@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en" ng-app="myApp">
+<head>
+  <meta charset="UTF-8">
+  <title>Angular Demo</title>
+  <script src="angular.min.js"></script>
+  <script src="test_get.js"></script> 
+</head>
+<body>
+<div class="main" ng-controller = "MyController">
+
+      <div ng-repeat="item in artists">
+        <h2>{{item.devicename}}</h2>
+        <h3>{{item.devicetype}}</h3>
+      </div>
+</div>
+</body>
+</html>
